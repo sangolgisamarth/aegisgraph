@@ -1,0 +1,13 @@
+fastapi
+uvicorn[standard]
+python-multipart
+
+flask
+
+pydantic
+
+requests
+
+python-dotenv
+
+python-multipart
