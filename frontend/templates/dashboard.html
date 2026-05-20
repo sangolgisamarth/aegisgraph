@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — AegisGraph{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+{% block page_subtitle %}/ overview{% endblock %}
+
+{% block content %}
+
+<!-- Hero banner -->
+<div style="background: linear-gradient(135deg, rgba(93,202,165,0.06) 0%, rgba(127,119,221,0.06) 100%); border: 1px solid rgba(93,202,165,0.15); border-radius: 12px; padding: 24px 28px; margin-bottom: 28px; display: flex; align-items: center; justify-content: space-between;">
+  <div>
+    <div style="font-family: var(--font-mono); font-size: 11px; color: var(--accent-green); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px;">Graph-Neural Exploit Chain Detection</div>
+    <div style="font-size: 20px; font-weight: 300; color: var(--text-primary); margin-bottom: 6px;">Smart Contract Vulnerability Engine</div>
+    <div style="font-size: 12px; color: var(--text-muted);">Combines GNN pathfinding + multi-agent LLM reasoning to surface hidden exploit chains.</div>
+  </div>
+  <a href="{{ url_for('audit_new') }}" class="btn btn-primary" style="white-space: nowrap; padding: 12px 22px; font-size: 13px;">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+    Run New Audit
+  </a>
+</div>
+
+<!-- Aggregate stats -->
+{% set total_vulns = namespace(val=0) %}
+{% set total_critical = namespace(val=0) %}
+{% set total_chains = namespace(val=0) %}
+{% for a in audits %}
+  {% if a.stats %}
+    {% set total_vulns.val = total_vulns.val + a.stats.total_vulns %}
+    {% set total_critical.val = total_critical.val + a.stats.critical %}
+    {% set total_chains.val = total_chains.val + 1 %}
+  {% endif %}
+{% endfor %}
+
+<div class="metrics-row" style="margin-bottom: 28px;">
+  <div class="metric-card">
+    <div class="metric-label">Audits Run</div>
+    <div class="metric-value color-green">{{ audits|length }}</div>
+    <div class="metric-sub">total contracts</div>
+  </div>
+  <div class="metric-card">
+    <div class="metric-label">Vulnerabilities</div>
+    <div class="metric-value {% if total_vulns.val > 0 %}color-high{% else %}color-green{% endif %}">{{ total_vulns.val }}</div>
+    <div class="metric-sub">across all audits</div>
+  </div>
+  <div class="metric-card">
+    <div class="metric-label">Critical</div>
+    <div class="metric-value {% if total_critical.val > 0 %}color-critical{% else %}color-green{% endif %}">{{ total_critical.val }}</div>
+    <div class="metric-sub">immediate risk</div>
+  </div>
+  <div class="metric-card">
+    <div class="metric-label">Exploit Chains</div>
+    <div class="metric-value color-purple">{{ total_chains.val }}</div>
+    <div class="metric-sub">multi-step attacks</div>
+  </div>
+</div>
+
+<!-- Pipeline explainer -->
+<div class="two-col" style="margin-bottom: 24px;">
+  <div class="card">
+    <div class="card-title">Inference Pipeline</div>
+    <div class="phase-list">
+      <div class="phase-item">
+        <div class="phase-dot-wrap"><div class="phase-dot a">A</div></div>
+        <div class="phase-body">
+          <div class="phase-name">Structural Extraction</div>
+          <div class="phase-detail">Compiles Solidity to AST → Heterogeneous Contract Semantic Graph. Nodes = variables/functions, edges = control & data flow.</div>
+        </div>
+      </div>
+      <div class="phase-item">
+        <div class="phase-dot-wrap"><div class="phase-dot b">B</div></div>
+        <div class="phase-body">
+          <div class="phase-name">Multi-Agent LLM Reasoning</div>
+          <div class="phase-detail">AUDITOR agent generates threat paths. CRITIC agent validates each path against real control flow — eliminating false positives.</div>
+        </div>
+      </div>
+      <div class="phase-item">
+        <div class="phase-dot-wrap"><div class="phase-dot c">C</div></div>
+        <div class="phase-body">
+          <div class="phase-name">Graph Pathfinding</div>
+          <div class="phase-detail">BFS across the contract graph. When postconditions match preconditions, an ESCALATES_TO edge is drawn — revealing the exploit chain.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Recent Audits</div>
+    {% if audits %}
+    <table class="audit-table">
+      <thead>
+        <tr>
+          <th>Contract</th>
+          <th>Vulns</th>
+          <th>Status</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for a in audits[-5:]|reverse %}
+        <tr>
+          <td style="color: var(--text-primary);">{{ a.contract_name }}</td>
+          <td>
+            {% if a.stats %}
+              {% if a.stats.critical > 0 %}<span class="badge badge-critical">{{ a.stats.critical }}C</span>{% endif %}
+              {% if a.stats.high > 0 %}<span class="badge badge-high" style="margin-left:4px">{{ a.stats.high }}H</span>{% endif %}
+            {% endif %}
+          </td>
+          <td><span class="badge badge-done">{{ a.status }}</span></td>
+          <td><a href="{{ url_for('audit_result', audit_id=a.audit_id) }}">View →</a></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state">
+      <div class="empty-icon">⬡</div>
+      <div class="empty-title">No audits yet</div>
+      <div class="empty-sub">Upload a smart contract to get started</div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+{% endblock %}

@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+{% block title %}New Audit — AegisGraph{% endblock %}
+{% block page_title %}New Audit{% endblock %}
+{% block page_subtitle %}/ paste or upload a Solidity contract{% endblock %}
+
+{% block content %}
+
+{% if error %}
+<div class="alert alert-error">⚠ {{ error }}</div>
+{% endif %}
+
+<div class="two-col" style="align-items: start;">
+
+  <!-- Left: form -->
+  <div>
+    <form method="POST" action="{{ url_for('audit_new') }}" id="audit-form">
+      <div class="card" style="margin-bottom: 16px;">
+        <div class="card-title">Contract Details</div>
+        <div class="form-group">
+          <label class="form-label">Contract Name</label>
+          <input class="form-input" type="text" name="contract_name" value="VaultProtocol" placeholder="MyContract" />
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom: 16px;">
+        <div class="card-title">Solidity Source Code</div>
+        <div class="code-wrap">
+          <div class="code-header">
+            <span class="code-lang">Solidity</span>
+            <button type="button" class="btn" style="padding:4px 10px; font-size:11px;" onclick="loadSample()">Load Sample</button>
+          </div>
+          <textarea class="code-input" name="contract_code" id="contract-code" placeholder="// Paste your .sol code here...">{{ sample }}</textarea>
+        </div>
+      </div>
+
+      <button type="submit" class="btn btn-primary" id="submit-btn" style="width: 100%; justify-content: center; padding: 13px; font-size: 13px;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+        Run Audit
+      </button>
+    </form>
+  </div>
+
+  <!-- Right: info panel -->
+  <div>
+    <div class="card" style="margin-bottom: 16px;">
+      <div class="card-title">What happens next</div>
+      <div class="phase-list">
+        <div class="phase-item">
+          <div class="phase-dot-wrap"><div class="phase-dot a">A</div></div>
+          <div class="phase-body">
+            <div class="phase-name">AST Extraction</div>
+            <div class="phase-detail">Contract compiled to Abstract Syntax Tree. Nodes and edges mapped into the graph engine.</div>
+          </div>
+        </div>
+        <div class="phase-item">
+          <div class="phase-dot-wrap"><div class="phase-dot b">B</div></div>
+          <div class="phase-body">
+            <div class="phase-name">LLM Agent Analysis</div>
+            <div class="phase-detail">AUDITOR generates potential exploit paths. CRITIC validates each against real control flow.</div>
+          </div>
+        </div>
+        <div class="phase-item">
+          <div class="phase-dot-wrap"><div class="phase-dot c">C</div></div>
+          <div class="phase-body">
+            <div class="phase-name">Exploit Chain Synthesis</div>
+            <div class="phase-detail">Graph pathfinder connects vulnerability nodes with ESCALATES_TO edges. Final chain rendered.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="background: rgba(255,77,77,0.04); border-color: rgba(255,77,77,0.15);">
+      <div class="card-title" style="color: var(--critical);">Why this matters</div>
+      <div style="font-size: 12px; color: var(--text-secondary); line-height: 1.7;">
+        Traditional scanners flag vulnerabilities <em>in isolation</em>. 
+        AegisGraph finds the <strong style="color: var(--text-primary);">chain</strong> — the sequence of 
+        &quot;Low&quot; and &quot;Informational&quot; bugs that together create a catastrophic zero-day.
+        <br><br>
+        Over <strong style="color: var(--critical);">$2B lost</strong> to Web3 exploits last year. 
+        Most were chained from individually-flagged issues.
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Loading overlay -->
+<div id="loading-overlay" style="display:none; position:fixed; inset:0; background:rgba(10,12,16,0.85); z-index:999; display:none; align-items:center; justify-content:center; flex-direction:column; gap:16px;">
+  <div style="text-align:center;">
+    <div class="spinner" style="width:36px; height:36px; margin: 0 auto 16px;"></div>
+    <div style="font-family: var(--font-mono); font-size:14px; color: var(--accent-green);" id="loading-msg">Compiling AST...</div>
+    <div style="font-size:11px; color: var(--text-muted); margin-top:6px;">Running 3-phase analysis pipeline</div>
+    <div class="scan-bar" style="width:240px; margin: 16px auto 0;"></div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const SAMPLE = {{ sample|tojson }};
+
+function loadSample() {
+  document.getElementById('contract-code').value = SAMPLE;
+}
+
+const LOADING_MSGS = [
+  "Compiling AST...",
+  "Extracting control flow graph...",
+  "AUDITOR agent generating threat paths...",
+  "CRITIC agent validating chains...",
+  "Running graph pathfinder...",
+  "Synthesizing exploit chain...",
+];
+
+document.getElementById('audit-form').addEventListener('submit', function() {
+  const overlay = document.getElementById('loading-overlay');
+  overlay.style.display = 'flex';
+  let i = 0;
+  setInterval(() => {
+    document.getElementById('loading-msg').textContent = LOADING_MSGS[i % LOADING_MSGS.length];
+    i++;
+  }, 900);
+});
+</script>
+{% endblock %}

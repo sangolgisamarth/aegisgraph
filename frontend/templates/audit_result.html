@@ -1,0 +1,278 @@
+{% extends "base.html" %}
+{% block title %}Audit {{ audit.audit_id }} — AegisGraph{% endblock %}
+{% block page_title %}Audit Result{% endblock %}
+{% block page_subtitle %}/ {{ audit.contract_name }} · #{{ audit.audit_id }}{% endblock %}
+
+{% block extra_css %}
+<style>
+.node-actor    { fill: #1a2535; stroke: #4a9eff; stroke-width: 1.5; }
+.node-function { fill: #1a1a35; stroke: #7f77dd; stroke-width: 1.5; }
+.node-state    { fill: #1a2520; stroke: #5DCAA5; stroke-width: 1.5; }
+.node-threat   { fill: #2a1010; stroke: #ff4d4d; stroke-width: 2; }
+.node-label    { fill: #e8eaf0; font-family: 'IBM Plex Mono', monospace; font-size: 11px; }
+.edge-normal   { stroke: #2a3545; stroke-width: 1.5; fill: none; }
+.edge-exploit  { stroke: #ff4d4d; stroke-width: 2; fill: none; stroke-dasharray: 5,3; }
+.edge-label    { fill: #4a5568; font-family: 'IBM Plex Mono', monospace; font-size: 9px; }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- Stats row -->
+<div class="metrics-row" style="margin-bottom: 24px;">
+  <div class="metric-card">
+    <div class="metric-label">Vulnerabilities</div>
+    <div class="metric-value {% if audit.stats.total_vulns > 0 %}color-high{% else %}color-green{% endif %}">
+      {{ audit.stats.total_vulns }}
+    </div>
+    <div class="metric-sub">found in contract</div>
+  </div>
+  <div class="metric-card">
+    <div class="metric-label">Critical</div>
+    <div class="metric-value {% if audit.stats.critical > 0 %}color-critical{% endif %}">
+      {{ audit.stats.critical }}
+    </div>
+    <div class="metric-sub">immediate risk</div>
+  </div>
+  <div class="metric-card">
+    <div class="metric-label">Graph Nodes</div>
+    <div class="metric-value color-purple">{{ audit.stats.total_nodes }}</div>
+    <div class="metric-sub">{{ audit.stats.total_edges }} edges</div>
+  </div>
+  <div class="metric-card">
+    <div class="metric-label">Exploit Chains</div>
+    <div class="metric-value color-critical">1</div>
+    <div class="metric-sub">multi-step attack</div>
+  </div>
+</div>
+
+<!-- Exploit Chain (hero) -->
+{% if audit.exploit_chain %}
+{% set ec = audit.exploit_chain %}
+<div class="exploit-chain" style="margin-bottom: 24px;">
+  <div class="chain-header">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ff4d4d" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+    <div class="chain-title">{{ ec.title }}</div>
+    <span class="badge badge-critical" style="margin-left:auto">{{ ec.severity }}</span>
+  </div>
+
+  <div class="chain-steps">
+    {% for step in ec.steps %}
+    <div class="chain-step">
+      <div class="chain-step-num">{{ step.order }}</div>
+      <div class="chain-step-body">
+        <div class="chain-step-fn">
+          {{ step.fn }}
+          {% if step.edge != 'ENTRY' %}
+          <span class="chain-edge">{{ step.edge }}</span>
+          {% endif %}
+        </div>
+        <div class="chain-step-desc">{{ step.desc }}</div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <div class="chain-impact">
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+      <div>
+        <div class="chain-impact-label">Impact</div>
+        <div class="chain-impact-text">{{ ec.impact }}</div>
+      </div>
+      <div>
+        <div class="chain-impact-label">Recommendation</div>
+        <div class="chain-impact-text">{{ ec.recommendation }}</div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<!-- Graph + Phases side by side -->
+<div class="two-col" style="margin-bottom: 24px;">
+
+  <!-- Contract graph -->
+  <div class="card" style="padding: 16px;">
+    <div class="card-title">Contract State Graph</div>
+    <div class="graph-wrap">
+      <svg id="graph-svg" viewBox="0 0 680 380">
+        <defs>
+          <marker id="arr" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
+            <path d="M0,0 L0,7 L7,3.5 z" fill="#2a3545"/>
+          </marker>
+          <marker id="arr-red" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
+            <path d="M0,0 L0,7 L7,3.5 z" fill="#ff4d4d"/>
+          </marker>
+        </defs>
+
+        <!-- Edges -->
+        {% if audit.edges %}
+          {% for e in audit.edges %}
+            <g class="edge-group" data-from="{{ e.from }}" data-to="{{ e.to }}" data-exploit="{{ e.exploit|default(false)|tojson }}">
+            </g>
+          {% endfor %}
+        {% endif %}
+
+        <!-- Will be drawn by JS using node positions -->
+        <g id="edges-layer"></g>
+        <g id="nodes-layer"></g>
+      </svg>
+    </div>
+
+    <div class="graph-legend" style="margin-top: 12px;">
+      <div class="legend-item"><div class="legend-dot" style="background:#4a9eff"></div>Actor</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#7f77dd"></div>Function</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#5DCAA5"></div>StateVariable</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#ff4d4d"></div>ThreatNode</div>
+      <div class="legend-item">
+        <svg width="24" height="8"><line x1="0" y1="4" x2="24" y2="4" stroke="#ff4d4d" stroke-width="2" stroke-dasharray="4,2"/></svg>
+        Exploit path
+      </div>
+    </div>
+  </div>
+
+  <!-- Phase tracker -->
+  <div class="card">
+    <div class="card-title">Pipeline Phases</div>
+    <div class="phase-list">
+      {% for p in audit.phases %}
+      <div class="phase-item">
+        <div class="phase-dot-wrap">
+          <div class="phase-dot {{ p.phase|lower }}">{{ p.phase }}</div>
+        </div>
+        <div class="phase-body">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <div class="phase-name">{{ p.label }}</div>
+            <span class="badge badge-done">{{ p.status }}</span>
+          </div>
+          <div class="phase-detail">{{ p.detail }}</div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+</div>
+
+<!-- Vulnerability list -->
+<div class="card">
+  <div class="card-title">
+    Vulnerabilities
+    <span style="float:right; font-size:11px; color: var(--text-muted);">{{ audit.vulnerabilities|length }} found</span>
+  </div>
+  <div class="vuln-list">
+    {% for v in audit.vulnerabilities %}
+    <div class="vuln-card {{ v.severity }}" onclick="this.classList.toggle('expanded')">
+      <div class="vuln-header">
+        <span class="badge badge-{{ v.severity }}">{{ v.severity }}</span>
+        <span class="vuln-title">{{ v.title }}</span>
+        <span class="vuln-meta">{{ v.contract }} · line {{ v.line }}</span>
+      </div>
+      <div class="vuln-desc">{{ v.description }}</div>
+      <div class="vuln-detail">
+        <div class="pre-post">
+          <div class="pre-post-item">
+            <div class="pre-post-label">Precondition</div>
+            <div class="pre-post-text">{{ v.pre }}</div>
+          </div>
+          <div class="pre-post-item">
+            <div class="pre-post-label">Postcondition</div>
+            <div class="pre-post-text">{{ v.post }}</div>
+          </div>
+        </div>
+        <div style="margin-top:10px; font-family: var(--font-mono); font-size:11px; color: var(--text-muted);">
+          Function: <span style="color: var(--accent-purple);">{{ v.function }}()</span>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Graph data from server
+const NODES = {{ audit.nodes | tojson }};
+const EDGES = {{ audit.edges | tojson }};
+
+function drawGraph() {
+  const svg = document.getElementById('graph-svg');
+  const el = document.getElementById('edges-layer');
+  const nl = document.getElementById('nodes-layer');
+
+  const nodeMap = {};
+  NODES.forEach(n => nodeMap[n.id] = n);
+
+  // Draw edges
+  EDGES.forEach(e => {
+    const from = nodeMap[e.from];
+    const to   = nodeMap[e.to];
+    if (!from || !to) return;
+
+    const isExploit = e.exploit === true;
+
+    // line
+    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    line.setAttribute('x1', from.x + 55);
+    line.setAttribute('y1', from.y + 16);
+    line.setAttribute('x2', to.x + 5);
+    line.setAttribute('y2', to.y + 16);
+    line.setAttribute('class', isExploit ? 'edge-exploit' : 'edge-normal');
+    line.setAttribute('marker-end', isExploit ? 'url(#arr-red)' : 'url(#arr)');
+    el.appendChild(line);
+
+    // edge label
+    const mx = (from.x + 55 + to.x + 5) / 2;
+    const my = (from.y + 16 + to.y + 16) / 2 - 5;
+    const txt = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    txt.setAttribute('x', mx);
+    txt.setAttribute('y', my);
+    txt.setAttribute('text-anchor', 'middle');
+    txt.setAttribute('class', 'edge-label');
+    txt.setAttribute('fill', isExploit ? '#ff4d4d' : '#4a5568');
+    txt.textContent = e.label;
+    el.appendChild(txt);
+  });
+
+  // Node colors
+  const typeColor = {
+    Actor:         { stroke: '#4a9eff', bg: '#0d1829' },
+    Function:      { stroke: '#7f77dd', bg: '#0d0d24' },
+    StateVariable: { stroke: '#5DCAA5', bg: '#0d1e1a' },
+    ThreatNode:    { stroke: '#ff4d4d', bg: '#200a0a' },
+  };
+
+  // Draw nodes
+  NODES.forEach(n => {
+    const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    g.setAttribute('transform', `translate(${n.x}, ${n.y})`);
+
+    const c = typeColor[n.type] || typeColor.Actor;
+
+    const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    rect.setAttribute('width', 110);
+    rect.setAttribute('height', 32);
+    rect.setAttribute('rx', 4);
+    rect.setAttribute('fill', c.bg);
+    rect.setAttribute('stroke', c.stroke);
+    rect.setAttribute('stroke-width', n.type === 'ThreatNode' ? 2 : 1.5);
+    g.appendChild(rect);
+
+    const txt = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    txt.setAttribute('x', 55);
+    txt.setAttribute('y', 20);
+    txt.setAttribute('text-anchor', 'middle');
+    txt.setAttribute('class', 'node-label');
+    txt.setAttribute('fill', c.stroke);
+    txt.textContent = n.label.length > 14 ? n.label.slice(0, 13) + '…' : n.label;
+    g.appendChild(txt);
+
+    nl.appendChild(g);
+  });
+}
+
+drawGraph();
+</script>
+{% endblock %}

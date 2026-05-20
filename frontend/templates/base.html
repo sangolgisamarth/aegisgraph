@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{% block title %}AegisGraph AI{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+  {% block extra_css %}{% endblock %}
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+      <polygon points="14,2 26,8 26,20 14,26 2,20 2,8" stroke="#5DCAA5" stroke-width="1.5" fill="none"/>
+      <circle cx="14" cy="14" r="3.5" fill="#5DCAA5"/>
+      <line x1="14" y1="2" x2="14" y2="10.5" stroke="#5DCAA5" stroke-width="1" opacity="0.6"/>
+      <line x1="26" y1="8" x2="17.5" y2="14" stroke="#5DCAA5" stroke-width="1" opacity="0.6"/>
+      <line x1="26" y1="20" x2="17.5" y2="14" stroke="#5DCAA5" stroke-width="1" opacity="0.6"/>
+      <line x1="14" y1="26" x2="14" y2="17.5" stroke="#5DCAA5" stroke-width="1" opacity="0.6"/>
+      <line x1="2" y1="20" x2="10.5" y2="14" stroke="#5DCAA5" stroke-width="1" opacity="0.6"/>
+      <line x1="2" y1="8" x2="10.5" y2="14" stroke="#5DCAA5" stroke-width="1" opacity="0.6"/>
+    </svg>
+    <span class="logo-text">AegisGraph</span>
+    <span class="logo-badge">AI</span>
+  </div>
+
+  <nav class="sidebar-nav">
+    <a href="{{ url_for('dashboard') }}" class="nav-item {% if request.endpoint == 'dashboard' %}active{% endif %}">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+      Dashboard
+    </a>
+    <a href="{{ url_for('audit_new') }}" class="nav-item {% if request.endpoint == 'audit_new' %}active{% endif %}">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 5v14M5 12h14"/></svg>
+      New Audit
+    </a>
+    <div class="nav-section-label">Docs</div>
+    <a href="#" class="nav-item">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>
+      Research
+    </a>
+  </nav>
+
+  <div class="sidebar-footer">
+    <div class="status-indicator">
+      <div class="status-dot"></div>
+      <span>Engine ready</span>
+    </div>
+    <div class="version-tag">v0.1 MVP</div>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<main class="main-content">
+  <header class="topbar">
+    <div class="topbar-left">
+      <h1 class="page-title">{% block page_title %}Dashboard{% endblock %}</h1>
+      <span class="page-subtitle">{% block page_subtitle %}{% endblock %}</span>
+    </div>
+    <div class="topbar-right">
+      <div class="chain-pill">
+        <div class="chain-dot"></div>
+        Ethereum Mainnet
+      </div>
+      <a href="{{ url_for('audit_new') }}" class="btn btn-primary">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+        New Audit
+      </a>
+    </div>
+  </header>
+
+  <div class="content-body">
+    {% block content %}{% endblock %}
+  </div>
+</main>
+
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+{% block extra_js %}{% endblock %}
+</body>
+</html>
